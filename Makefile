@@ -4,6 +4,7 @@
 #   make firmware      compila transmissor e receptor para o ESP32 (arduino-cli)
 #   make upload-tx PORTA=/dev/cu.usbserial-XXX   grava o transmissor
 #   make upload-rx PORTA=/dev/cu.usbserial-XXX   grava o receptor
+#   make upload-fips PORTA=/dev/cu.usbserial-XXX grava a validação FIPS-197
 #   make clean         remove artefatos de compilação
 
 LIB      := libraries/AES128Core
@@ -15,7 +16,7 @@ FQBN     := esp32:esp32:esp32:UploadSpeed=460800
 PORTA    ?= /dev/cu.usbserial-130
 ARDUINO  := arduino-cli
 
-.PHONY: test firmware upload-tx upload-rx clean
+.PHONY: test firmware upload-tx upload-rx upload-fips clean
 
 test: $(BUILD)/testes
 	./$(BUILD)/testes
@@ -33,6 +34,9 @@ upload-tx:
 
 upload-rx:
 	$(ARDUINO) compile --fqbn $(FQBN) --library $(LIB) --build-path $(BUILD)/receptor -u -p $(PORTA) firmware/receptor
+
+upload-fips:
+	$(ARDUINO) compile --fqbn $(FQBN) --library $(LIB) --build-path $(BUILD)/validacao_fips -u -p $(PORTA) firmware/validacao_fips
 
 clean:
 	rm -rf $(BUILD)

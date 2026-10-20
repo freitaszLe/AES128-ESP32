@@ -23,7 +23,8 @@ libraries/AES128Core/
     └── aes128.h / .c      cifra de bloco AES-128 (FIPS-197)
 firmware/
 ├── transmissor/transmissor.ino
-└── receptor/receptor.ino
+├── receptor/receptor.ino
+└── validacao_fips/validacao_fips.ino   vetores do FIPS-197 executados na placa
 tests/host/
 ├── teste.h                mini-framework de testes
 └── test_main.c            testes do núcleo

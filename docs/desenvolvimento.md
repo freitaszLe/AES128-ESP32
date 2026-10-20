@@ -101,3 +101,16 @@
 | Decifragem: apêndices B e C.1 recuperam o texto claro | ✅ |
 | Ida e volta: `Decifrar(Cifrar(x)) = x` em 1000 chaves e blocos pseudoaleatórios | ✅ |
 | Sensibilidade dos testes da decifragem: coeficiente do InvMixColumns, sentido do InvShiftRows e ordem das chaves, todos detectados | ✅ |
+| ESP32: apêndices B e C.1 cifrados e decifrados corretamente na placa (`validacao_fips`) | ✅ |
+
+### Desempenho no ESP32 (240 MHz, média de 1000 execuções)
+
+| Operação | Tempo |
+|---|---|
+| Expansão de chave | 24,06 µs |
+| Cifrar 1 bloco | 55,95 µs |
+| Decifrar 1 bloco | 404,13 µs |
+
+A decifragem é mais lenta porque o InvMixColumns usa a multiplicação genérica em GF(2⁸)
+(laço bit a bit) com os coeficientes {0e, 0b, 0d, 09}, enquanto o MixColumns usa apenas `xtime`
+e XOR para {02} e {03}. Para este trabalho (poucos blocos por mensagem) a diferença é irrelevante.

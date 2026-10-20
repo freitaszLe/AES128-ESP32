@@ -49,7 +49,19 @@ make upload-rx PORTA=/dev/cu.usbserial-XXX   # grava o receptor
 A gravação usa 460800 baud. Na velocidade padrão (921600), conversores CH340 ligados por hub USB
 podem falhar com *"Unable to verify flash chip connection"*.
 
-## 5. Arduino IDE
+## 5. Validação na placa
+
+Grava um sketch que executa os vetores do FIPS-197 (apêndices B e C.1) na placa e mede o tempo
+de cifragem. O resultado é repetido a cada 10 segundos no Monitor Serial (115200 baud):
+
+```bash
+make upload-fips PORTA=/dev/cu.usbserial-XXX
+```
+
+Feche o Monitor Serial antes de gravar: dois programas abertos na mesma porta disputam os bytes,
+o que causa falhas na gravação e texto embaralhado no monitor.
+
+## 6. Arduino IDE
 
 Uma única vez, crie o link da biblioteca no sketchbook (na raiz do repositório):
 
@@ -70,7 +82,7 @@ Depois:
 > A velocidade de gravação (460800) não tem relação com a do Monitor Serial nem com a da UART2
 > (ambas 115200).
 
-## 6. Conferência com OpenSSL
+## 7. Conferência com OpenSSL
 
 ```bash
 tools/referencia.sh cifrar   <chave_hex> <blocos_hex>
