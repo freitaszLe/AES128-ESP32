@@ -89,3 +89,10 @@
 |---|---|
 | Vetores do enunciado (FIPS B e C.1, exemplo de matrículas, blocos repetidos) conferidos com OpenSSL | ✅ todos coincidem |
 | Estrutura: `make test` e compilação dos dois firmwares | ✅ |
+| GF(2⁸): `xtime` e multiplicação (FIPS-197 seção 4.2) | ✅ |
+| S-box: 256 valores da tabela iguais aos recalculados (inverso + transformação afim) | ✅ |
+| Expansão de chave: 11 chaves de rodada iguais ao apêndice A.1 | ✅ |
+| SubBytes, ShiftRows, MixColumns e AddRoundKey isolados (apêndice B, rodada 1) | ✅ |
+| Cinco estados da rodada 1 a partir do texto claro (apêndice B) | ✅ |
+| Cifragem: apêndices B e C.1 | ✅ |
+| Sensibilidade dos testes: defeitos introduzidos de propósito (byte da S-box, sentido do ShiftRows, Rcon) foram todos detectados | ✅ |

@@ -87,6 +87,46 @@ rodada 10:      SubBytes → ShiftRows →              AddRoundKey(chave 10)
 
 A última rodada não tem MixColumns, conforme o FIPS-197.
 
+### Aritmética em GF(2⁸)
+
+Cada byte é um polinômio de grau < 8 com coeficientes em {0, 1}. A soma é XOR e a multiplicação
+é feita módulo o polinômio irredutível m(x) = x⁸ + x⁴ + x³ + x + 1.
+
+- `xtime(a)` multiplica por {02}: desloca 1 bit para a esquerda e, se o bit 7 era 1, faz XOR com `0x1B`.
+- A multiplicação genérica soma (XOR) as potências `a·x^i` correspondentes aos bits 1 do outro fator.
+- No MixColumns: `{02}·a = xtime(a)` e `{03}·a = xtime(a) ^ a`.
+
+### Origem da S-box
+
+Para cada byte b: calcula-se o inverso multiplicativo b⁻¹ em GF(2⁸) (com 0 → 0) e aplica-se a
+transformação afim `s = b' ⊕ rotl(b',1) ⊕ rotl(b',2) ⊕ rotl(b',3) ⊕ rotl(b',4) ⊕ 0x63`.
+O inverso fornece a não linearidade; a transformação afim elimina pontos fixos. No código a S-box é
+uma tabela de 256 bytes; os testes recalculam todos os valores a partir dessa definição e comparam.
+
+### Expansão de chave
+
+Gera 44 palavras de 4 bytes (`w[0..43]`), ou seja, 11 chaves de rodada de 16 bytes:
+
+- `w[0..3]` = a própria chave;
+- para `i ≥ 4`: `temp = w[i-1]`; se `i` é múltiplo de 4,
+  `temp = SubWord(RotWord(temp)) ⊕ Rcon[i/4]`; então `w[i] = w[i-4] ⊕ temp`.
+
+`RotWord` gira a palavra 1 byte para a esquerda, `SubWord` aplica a S-box aos 4 bytes e
+`Rcon` = {01}, {02}, {04}, …, {36}, obtido aplicando `xtime` sucessivamente.
+
+### API (`aes128.h`)
+
+| Função | Descrição |
+|---|---|
+| `aes128_xtime`, `aes128_gf_mult` | Aritmética em GF(2⁸) |
+| `aes128_sbox` | Valor da S-box |
+| `aes128_sub_bytes`, `aes128_shift_rows`, `aes128_mix_columns`, `aes128_add_round_key` | Transformações, aplicadas no próprio estado |
+| `aes128_expandir_chave` | Chave de 16 bytes → 176 bytes de chaves de rodada |
+| `aes128_cifrar_bloco` | Cifra um bloco de 16 bytes |
+
+As transformações são públicas para permitir testá-las isoladamente e registrar os estados
+intermediários de cada rodada.
+
 ## Protocolo do quadro UART
 
 | Campo | Tamanho | Valor |

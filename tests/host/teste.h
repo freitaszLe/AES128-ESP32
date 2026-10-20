@@ -26,6 +26,21 @@ static void teste_hex(const char *rotulo, const unsigned char *p, size_t n)
     printf("\n");
 }
 
+/* Converte uma string hexadecimal (ex.: "3243f6a8") em bytes. Retorna o número de bytes. */
+#if defined(__GNUC__)
+__attribute__((unused))
+#endif
+static size_t hex_para_bytes(const char *hex, unsigned char *saida)
+{
+    size_t n = 0;
+    unsigned int v;
+    while (hex[0] && hex[1] && sscanf(hex, "%2x", &v) == 1) {
+        saida[n++] = (unsigned char)v;
+        hex += 2;
+    }
+    return n;
+}
+
 #define CHECAR(cond)                                                        \
     do {                                                                    \
         teste_total++;                                                      \
