@@ -1,0 +1,16 @@
+# Artefatos de compilação
+build/
+*.o
+*.bin
+*.elf
+*.map
+
+# Sistema / editores
+.DS_Store
+.vscode/
+.idea/
+*.swp
+
+
+# Material de apoio da disciplina
+*.pdf
