@@ -182,6 +182,11 @@ textos cifrados iguais.
 | Relatório gerado na placa idêntico, byte a byte, ao gerado no computador (62 linhas) | ✅ |
 | UART2 entre as placas (115200 8N1, sem criptografia): mais de 45 000 bytes em cada sentido, com todos os valores de 0x00 a 0xFF, sem erros | ✅ |
 | UART2: com uma placa em reset a outra deixa de receber, confirmando que cada placa recebe os bytes da outra (e não um eco) | ✅ |
+| Quadro: montagem (quadro da dupla com 34 bytes), recepção com lixo antes do marcador, quadros seguidos, truncado com tempo limite, `n` inválido, chave errada, dado corrompido e mensagem de 255 bytes | ✅ |
+| Placas: mensagem da dupla transmitida, decifrada e exibida no receptor | ✅ |
+| Placas: mensagem nova pelo comando `m` (1 e 2 blocos) | ✅ |
+| Placas: 1 bit da chave alterado no transmissor ou no receptor → PKCS#7 inválido, quadro rejeitado | ✅ |
+| Placas: quadro truncado descartado após 500 ms (15 de 32 bytes) e quadro seguinte recebido normalmente | ✅ |
 
 ### Desempenho no ESP32 (240 MHz, média de 1000 execuções)
 

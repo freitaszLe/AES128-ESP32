@@ -17,6 +17,8 @@
 #include "dupla.h"
 #include "pkcs7.h"
 #include "analise.h"
+#include "quadro.h"
+#include "dados_dupla.h"
 
 /* ---------------------------------------------------------------------- */
 
@@ -581,6 +583,102 @@ static void teste_experimento_ecb(void)
 
 /* ---------------------------------------------------------------------- */
 
+/* Entrega 'n' bytes ao receptor no instante 'agora' e devolve o último
+ * resultado diferente de QUADRO_EM_ANDAMENTO (ou EM_ANDAMENTO se não houver). */
+static quadro_resultado_t alimentar(quadro_receptor_t *r, const uint8_t *b, size_t n, uint32_t agora)
+{
+    quadro_resultado_t ultimo = QUADRO_EM_ANDAMENTO, res;
+    size_t i;
+    for (i = 0; i < n; i++) {
+        res = quadro_receptor_byte(r, b[i], agora);
+        if (res != QUADRO_EM_ANDAMENTO) ultimo = res;
+    }
+    return ultimo;
+}
+
+static void teste_quadro(void)
+{
+    uint8_t chave[AES128_CHAVE], chave_errada[AES128_CHAVE];
+    uint8_t quadro[QUADRO_MAX_BYTES], esp[34], msg[QUADRO_MAX_DADOS];
+    char texto[64];
+    size_t tam, n_msg, n;
+    quadro_receptor_t r;
+    static const uint8_t LIXO[] = { 0x00, 0x13, 0xff, 0x42 };
+
+    printf("[quadro] montagem, recepção, timeout e falhas\n");
+
+    dupla_montar_chave(DUPLA_MATRICULA_A, DUPLA_MATRICULA_B, chave);
+    n_msg = dupla_montar_mensagem(DUPLA_MATRICULA_A, DUPLA_MATRICULA_B, texto, sizeof texto);
+
+    /* Quadro da dupla: AA 02 + 2 blocos cifrados (34 bytes) */
+    tam = quadro_cifrar_mensagem(chave, (const uint8_t *)texto, n_msg, quadro, sizeof quadro);
+    CHECAR(tam == 34);
+    hex_para_bytes("aa02907e9c613af4c51b5962ab262c545ec0"
+                   "39c740f27e00a499c0e34ea9fd06076b", esp);
+    CHECAR_BYTES(quadro, esp, 34, "quadro da dupla");
+
+    /* Mensagem longa demais e capacidade insuficiente */
+    CHECAR(quadro_cifrar_mensagem(chave, msg, QUADRO_MAX_MENSAGEM + 1, quadro, sizeof quadro) == 0);
+    CHECAR(quadro_cifrar_mensagem(chave, (const uint8_t *)texto, n_msg, quadro, 33) == 0);
+
+    /* Recepção normal, com lixo antes do marcador */
+    tam = quadro_cifrar_mensagem(chave, (const uint8_t *)texto, n_msg, quadro, sizeof quadro);
+    quadro_receptor_iniciar(&r, 500);
+    CHECAR(alimentar(&r, LIXO, sizeof LIXO, 1000) == QUADRO_EM_ANDAMENTO);
+    CHECAR(r.descartados == 4);
+    CHECAR(alimentar(&r, quadro, tam, 1010) == QUADRO_COMPLETO);
+    CHECAR(r.n_blocos == 2);
+    CHECAR(quadro_decifrar(chave, r.dados, r.n_blocos, msg, &n) == 0);
+    CHECAR(n == n_msg && memcmp(msg, texto, n) == 0);
+
+    /* Dois quadros seguidos */
+    CHECAR(alimentar(&r, quadro, tam, 2000) == QUADRO_COMPLETO);
+    CHECAR(alimentar(&r, quadro, tam, 2001) == QUADRO_COMPLETO);
+
+    /* Quadro truncado: metade chega, o resto nunca -> timeout, e o receptor se recupera */
+    quadro_receptor_iniciar(&r, 500);
+    CHECAR(alimentar(&r, quadro, 20, 3000) == QUADRO_EM_ANDAMENTO);
+    CHECAR(quadro_receptor_verificar_timeout(&r, 3400) == QUADRO_EM_ANDAMENTO);
+    CHECAR(quadro_receptor_verificar_timeout(&r, 3501) == QUADRO_ERRO_TIMEOUT);
+    CHECAR(r.estado == QUADRO_ESPERANDO_MARCADOR);
+    CHECAR(r.recebidos == 18);   /* 20 bytes enviados = marcador + n + 18 de dados */
+    CHECAR(alimentar(&r, quadro, tam, 4000) == QUADRO_COMPLETO);
+
+    /* Truncado seguido de um quadro novo depois do tempo limite (sem chamar
+     * verificar_timeout): o 0xAA novo deve iniciar o quadro seguinte */
+    quadro_receptor_iniciar(&r, 500);
+    alimentar(&r, quadro, 10, 5000);
+    CHECAR(quadro_receptor_byte(&r, QUADRO_MARCADOR, 6000) == QUADRO_ERRO_TIMEOUT);
+    CHECAR(alimentar(&r, &quadro[1], tam - 1, 6001) == QUADRO_COMPLETO);
+
+    /* n inválido: 0 e maior que o máximo */
+    quadro_receptor_iniciar(&r, 500);
+    CHECAR(quadro_receptor_byte(&r, 0xAA, 7000) == QUADRO_EM_ANDAMENTO);
+    CHECAR(quadro_receptor_byte(&r, 0x00, 7000) == QUADRO_ERRO_N_INVALIDO);
+    CHECAR(quadro_receptor_byte(&r, 0xAA, 7000) == QUADRO_EM_ANDAMENTO);
+    CHECAR(quadro_receptor_byte(&r, QUADRO_MAX_BLOCOS + 1, 7000) == QUADRO_ERRO_N_INVALIDO);
+    CHECAR(r.estado == QUADRO_ESPERANDO_MARCADOR);
+
+    /* Chave errada (1 bit): decifragem produz PKCS#7 inválido */
+    memcpy(chave_errada, chave, AES128_CHAVE);
+    analise_inverter_bit(chave_errada, 127);
+    CHECAR(quadro_decifrar(chave_errada, &quadro[2], quadro[1], msg, &n) == -1);
+
+    /* Dado corrompido no último bloco: PKCS#7 inválido */
+    quadro[tam - 1] ^= 0x01;
+    CHECAR(quadro_decifrar(chave, &quadro[2], quadro[1], msg, &n) == -1);
+
+    /* Mensagem de tamanho máximo (255 bytes -> 16 blocos) */
+    memset(msg, 'x', QUADRO_MAX_MENSAGEM);
+    tam = quadro_cifrar_mensagem(chave, msg, QUADRO_MAX_MENSAGEM, quadro, sizeof quadro);
+    CHECAR(tam == QUADRO_MAX_BYTES && quadro[1] == QUADRO_MAX_BLOCOS);
+    quadro_receptor_iniciar(&r, 500);
+    CHECAR(alimentar(&r, quadro, tam, 8000) == QUADRO_COMPLETO);
+    CHECAR(quadro_decifrar(chave, r.dados, r.n_blocos, msg, &n) == 0 && n == QUADRO_MAX_MENSAGEM);
+}
+
+/* ---------------------------------------------------------------------- */
+
 int main(void)
 {
     teste_biblioteca_ligada();
@@ -600,5 +698,6 @@ int main(void)
     teste_dados_da_dupla();
     teste_analise();
     teste_experimento_ecb();
+    teste_quadro();
     return teste_resumo();
 }

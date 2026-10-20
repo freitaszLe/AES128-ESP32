@@ -7,9 +7,10 @@
 #include <stdio.h>
 
 #include "analise.h"
+#include "dados_dupla.h"
 
-#define MATRICULA_A "2022178440126"
-#define MATRICULA_B "2022178440142"
+#define MATRICULA_A DUPLA_MATRICULA_A
+#define MATRICULA_B DUPLA_MATRICULA_B
 
 static void escrever(const char *linha)
 {

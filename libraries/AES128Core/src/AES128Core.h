@@ -12,5 +12,7 @@
 #include "pkcs7.h"
 #include "dupla.h"
 #include "analise.h"
+#include "quadro.h"
+#include "dados_dupla.h"
 
 #endif /* AES128CORE_H */

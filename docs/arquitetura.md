@@ -23,7 +23,9 @@ libraries/AES128Core/
     ├── aes128.h / .c      cifra de bloco AES-128 (FIPS-197) e modo ECB
     ├── pkcs7.h / .c       preenchimento PKCS#7
     ├── dupla.h / .c       chave e mensagem a partir das matrículas
-    └── analise.h / .c     estados da rodada 1, avalanche e relatório de análise
+    ├── analise.h / .c     estados da rodada 1, avalanche e relatório de análise
+    ├── quadro.h / .c      quadro UART: montagem e recepção com máquina de estados
+    └── dados_dupla.h      matrículas da dupla
 firmware/
 ├── transmissor/transmissor.ino
 ├── receptor/receptor.ino
@@ -202,3 +204,34 @@ Exemplo com dois blocos (34 bytes):
 ```
 AA 02 3a3784991ab0acaa88d5fd94cb7b74ad cbea1d9e3e1f39da47111cf69064b166
 ```
+
+Quadro da dupla: `AA 02 907e9c613af4c51b5962ab262c545ec0 39c740f27e00a499c0e34ea9fd06076b`.
+
+### Transmissor
+
+`quadro_cifrar_mensagem` aplica PKCS#7 à mensagem, cifra em ECB e monta o quadro; o sketch o
+envia com `Serial2.write`, em bytes brutos. A mensagem pode ter até 255 bytes (16 blocos).
+
+### Receptor: máquina de estados
+
+```
+                 0xAA                 1 ≤ n ≤ 16              16·n bytes
+ ESPERANDO_MARCADOR ──► LENDO_N ────────────────► LENDO_BLOCOS ──────────► COMPLETO
+        ▲    │ outro byte: descartado   │ n inválido          │ tempo limite
+        │    ▼                          ▼                     ▼
+        └───────────────────────────────┴─────────────────────┘
+```
+
+- Os bytes da UART2 entram um a um em `quadro_receptor_byte`; o tempo é passado como parâmetro
+  (`millis()` no ESP32), o que permite testar a lógica no computador.
+- O tempo limite (500 ms) é contado a partir do marcador. Um quadro de 16 blocos (258 bytes) leva
+  cerca de 23 ms a 115200 bps, então o limite só é atingido se bytes se perderem.
+- Depois de um erro o receptor volta a esperar `0xAA`, de modo que um quadro truncado não impede
+  a recepção do seguinte.
+- `quadro_decifrar` decifra os blocos e valida o PKCS#7. Com a chave errada (ou dados corrompidos)
+  o preenchimento resultante é inválido e o quadro é rejeitado.
+
+Limitação: como o texto cifrado pode conter `0xAA`, um receptor que perca a sincronização no meio
+de um quadro pode tomar um byte cifrado como marcador. A validação de `n`, o tempo limite e a
+validação do PKCS#7 descartam esses quadros falsos, mas o protocolo não tem verificação de
+integridade (checksum ou MAC), conforme definido no enunciado.

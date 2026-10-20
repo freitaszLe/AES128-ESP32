@@ -9,8 +9,8 @@
  */
 #include <AES128Core.h>
 
-static const char *MATRICULA_A = "2022178440126";
-static const char *MATRICULA_B = "2022178440142";
+static const char *MATRICULA_A = DUPLA_MATRICULA_A;
+static const char *MATRICULA_B = DUPLA_MATRICULA_B;
 
 // Função de saída usada pelo relatório: uma linha por chamada.
 static void escreverLinha(const char *linha) {

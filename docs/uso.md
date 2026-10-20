@@ -72,6 +72,42 @@ TX 22336 bytes | RX 22272 bytes, 0 erro(s) | ultimo 0xff | OK
 Enviar `z` pelo Monitor Serial zera os contadores. "RX: nada recebido" indica fio solto, TX/RX
 não cruzados ou outra placa desligada.
 
+### Transmissor e receptor
+
+```bash
+make upload-tx PORTA=/dev/cu.usbserial-AAAA   # placa A
+make upload-rx PORTA=/dev/cu.usbserial-BBBB   # placa B
+```
+
+Para acompanhar as duas placas ao mesmo tempo, abra **duas janelas** da Arduino IDE
+(*Arquivo → Nova janela*), cada uma com a porta de uma placa e o Monitor Serial em 115200 baud.
+Ao ligar, o transmissor envia a mensagem da dupla e o receptor exibe:
+
+```
+[RX] Quadro recebido pela UART2: AA 02 + 32 bytes cifrados
+  Chave (ASCII) : 7844012678440142
+  Cifrado       : 907e9c613af4c51b5962ab262c545ec0
+                  39c740f27e00a499c0e34ea9fd06076b
+  Decifrado     : 413a323032323137383434303132363b
+                  423a3230323231373834343031343201
+  PKCS#7        : valido (1 byte(s) de preenchimento removidos)
+  MENSAGEM      : A:2022178440126;B:2022178440142
+```
+
+Comandos no Monitor Serial do **transmissor** (com "Nova linha" selecionado):
+
+| Comando | Efeito |
+|---|---|
+| Enter | reenvia a mensagem atual |
+| `m <texto>` | cifra e envia uma mensagem nova (até 255 bytes) |
+| `d` | volta para a mensagem da dupla |
+| `b <n>` | inverte o bit `n` (0 a 127) da chave e envia |
+| `k` | restaura a chave original |
+| `t` | envia só metade do quadro (o receptor descarta por tempo limite) |
+
+Comandos no Monitor Serial do **receptor**: `b <n>` inverte um bit da chave do receptor e `k`
+restaura a original.
+
 ## 4. Testes no computador
 
 ```bash
