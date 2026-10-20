@@ -192,6 +192,20 @@ textos cifrados iguais.
 | `"LIGAR LED VERDE."` enviado 3 vezes: mesmo texto cifrado nas 3 (ECB é determinístico) | ✅ |
 | Roteiro executado manualmente pela Arduino IDE (dois Monitores Seriais): mensagem da dupla, `m Ola professor`, `b 127` (rejeitado), `k` e `t` (descartado com 7 de 16 bytes) | ✅ |
 
+### Capturas dos Monitores Seriais
+
+Mensagem da dupla (transmissor à esquerda, receptor à direita):
+
+![Mensagem da dupla](img/uart_mensagem_dupla.png)
+
+Mensagem nova, chave alterada (rejeitada) e chave restaurada:
+
+![Mensagem nova e chave alterada](img/uart_mensagem_nova_chave_alterada.png)
+
+Quadros truncados descartados por tempo limite:
+
+![Quadro truncado](img/uart_quadro_truncado.png)
+
 ### Cenários de falha física
 
 | Cenário | Resultado observado | Explicação |
