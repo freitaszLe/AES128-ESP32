@@ -16,6 +16,7 @@
 #include "aes128.h"
 #include "dupla.h"
 #include "pkcs7.h"
+#include "analise.h"
 
 /* ---------------------------------------------------------------------- */
 
@@ -522,6 +523,64 @@ static void teste_dados_da_dupla(void)
 
 /* ---------------------------------------------------------------------- */
 
+static void teste_analise(void)
+{
+    uint8_t a[16] = { 0 }, b[16] = { 0 };
+    uint8_t chave[AES128_CHAVE], rk[AES128_CHAVES_RODADA_BYTES], bloco[AES128_BLOCO];
+    uint8_t estados[ANALISE_ESTADOS_RODADA1][AES128_BLOCO], esp[AES128_BLOCO];
+    static const char *ESPERADOS[ANALISE_ESTADOS_RODADA1] = {
+        "193de3bea0f4e22b9ac68d2ae9f84808", "d42711aee0bf98f1b8b45de51e415230",
+        "d4bf5d30e0b452aeb84111f11e2798e5", "046681e5e0cb199a48f8d37a2806264c",
+        "a49c7ff2689f352b6b5bea43026a5049",
+    };
+    int i;
+
+    printf("[análise] contagem de bits, inversão de bit e estados da rodada 1\n");
+
+    CHECAR(analise_bits_diferentes(a, b, 16) == 0);
+    b[0] = 0xff; b[15] = 0x01;
+    CHECAR(analise_bits_diferentes(a, b, 16) == 9);
+    memset(b, 0xff, 16);
+    CHECAR(analise_bits_diferentes(a, b, 16) == 128);
+
+    /* Numeração: bit 0 = mais significativo do byte 0; bit 127 = menos significativo do byte 15 */
+    memset(a, 0, 16);
+    analise_inverter_bit(a, 0);   CHECAR(a[0] == 0x80);
+    analise_inverter_bit(a, 7);   CHECAR(a[0] == 0x81);
+    analise_inverter_bit(a, 127); CHECAR(a[15] == 0x01);
+    analise_inverter_bit(a, 0);   CHECAR(a[0] == 0x01);   /* inverter de novo desfaz */
+
+    /* Os 5 estados devem ser os do apêndice B do FIPS-197 */
+    hex_para_bytes("2b7e151628aed2a6abf7158809cf4f3c", chave);
+    hex_para_bytes("3243f6a8885a308d313198a2e0370734", bloco);
+    aes128_expandir_chave(chave, rk);
+    analise_estados_rodada1(rk, bloco, estados);
+    for (i = 0; i < ANALISE_ESTADOS_RODADA1; i++) {
+        hex_para_bytes(ESPERADOS[i], esp);
+        CHECAR_BYTES(estados[i], esp, AES128_BLOCO, "estado da rodada 1");
+    }
+}
+
+static void teste_experimento_ecb(void)
+{
+    uint8_t chave[AES128_CHAVE], rk[AES128_CHAVES_RODADA_BYTES];
+    uint8_t dados[48], esp[48];
+
+    printf("[ECB] experimento de blocos repetidos do enunciado\n");
+
+    dupla_montar_chave("20231001", "20231002", chave);
+    memcpy(dados, "LIGAR LED VERDE.DESLIGAR LED    LIGAR LED VERDE.", 48);
+    aes128_expandir_chave(chave, rk);
+    aes128_ecb_cifrar(rk, dados, dados, 3);
+    hex_para_bytes("e0c22a6f02664f487dc9528642203dec"
+                   "2b4d065ea65478b60696616244cd5070"
+                   "e0c22a6f02664f487dc9528642203dec", esp);
+    CHECAR_BYTES(dados, esp, 48, "3 blocos em ECB");
+    CHECAR(memcmp(&dados[0], &dados[32], 16) == 0);
+}
+
+/* ---------------------------------------------------------------------- */
+
 int main(void)
 {
     teste_biblioteca_ligada();
@@ -539,5 +598,7 @@ int main(void)
     teste_pkcs7();
     teste_exemplo_enunciado_ecb();
     teste_dados_da_dupla();
+    teste_analise();
+    teste_experimento_ecb();
     return teste_resumo();
 }

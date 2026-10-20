@@ -11,5 +11,6 @@
 #include "aes128.h"
 #include "pkcs7.h"
 #include "dupla.h"
+#include "analise.h"
 
 #endif /* AES128CORE_H */

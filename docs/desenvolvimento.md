@@ -78,6 +78,58 @@ Quadro UART correspondente (34 bytes): `AA 02 907e9c61…5ec0 39c740f2…076b`.
 | 2 | `"DESLIGAR LED    "` (4 espaços no final) | `2b4d065ea65478b60696616244cd5070` |
 | 3 | `"LIGAR LED VERDE."` | `e0c22a6f02664f487dc9528642203dec` |
 
+## Registros da análise (dados da dupla)
+
+Gerados por `firmware/analise` na placa e por `make analise` no computador (saídas idênticas).
+
+### Chaves de rodada
+
+| Rodada | Chave |
+|---|---|
+| 0 | `37383434303132363738343430313432` |
+| 1 | `f1201730c1112506f6291132c6182500` |
+
+### Estados do bloco 1 na rodada 1
+
+| Fase | Estado |
+|---|---|
+| Entrada (bloco 1) | `413a323032323137383434303132363b` |
+| (1) AddRoundKey (chave 0) | `76020604020303010f0c000401030209` |
+| (2) SubBytes | `38776ff2777b7b7c76fe63f27c7b7701` |
+| (3) ShiftRows | `387b630177fe77f2767b6f7c7c777bf2` |
+| (4) MixColumns | `9f6a865272fb6aef724d5776e8edf077` |
+| (5) AddRoundKey (chave 1) | `6e4a9162b3ea4fe9846446442ef5d577` |
+
+### Efeito avalanche
+
+| Alteração | Texto cifrado resultante | Bits alterados |
+|---|---|---|
+| Nenhuma (original) | `907e9c613af4c51b5962ab262c545ec0` `39c740f27e00a499c0e34ea9fd06076b` | — |
+| Bit 127 da chave (`…0142` → `…0143`) | `913c69859192ec1d814f7a32eee0e559` `30fe9563db8bb9a96de30694fec74b52` | bloco 1: 58/128 (45,31%) · bloco 2: 52/128 (40,62%) · total: 110/256 (42,97%) |
+| Bit 7 da mensagem (`'A'` → `'@'`) | `da03aeb3304e881a9a1f2bdb55c18783` `39c740f27e00a499c0e34ea9fd06076b` | bloco 1: 63/128 (49,22%) · bloco 2: 0/128 (0%) · total: 63/256 (24,61%) |
+
+Média invertendo cada bit, um de cada vez:
+
+| Posições | Média | Mínimo | Máximo |
+|---|---|---|---|
+| 128 bits da chave (sobre os 256 bits cifrados) | 49,90% | 41,80% | 60,16% |
+| 128 bits do bloco 1 da mensagem (sobre o bloco 1 cifrado) | 50,57% | 40,62% | 63,28% |
+
+Uma única alteração varia em torno de 50% (o valor exato depende do bit escolhido); a média sobre
+todas as posições fica muito próxima dos 50% esperados. Alterar 1 bit da mensagem muda apenas o
+bloco onde ele está: em ECB o bloco 2 não é afetado.
+
+### Experimento ECB
+
+| Bloco | Texto claro | Cifrado |
+|---|---|---|
+| 1 | `"LIGAR LED VERDE."` | `e0c22a6f02664f487dc9528642203dec` |
+| 2 | `"DESLIGAR LED    "` | `2b4d065ea65478b60696616244cd5070` |
+| 3 | `"LIGAR LED VERDE."` | `e0c22a6f02664f487dc9528642203dec` |
+
+O bloco 3 cifrado é idêntico ao bloco 1: em ECB, textos claros iguais sob a mesma chave sempre geram
+textos cifrados iguais.
+
 ## Estratégia de validação
 
 1. **Testes no computador** (`make test`): cada transformação do AES é testada isoladamente contra
@@ -123,6 +175,10 @@ Quadro UART correspondente (34 bytes): `AA 02 907e9c61…5ec0 39c740f2…076b`.
 | ECB: exemplo do enunciado reproduzido byte a byte (mensagem com PKCS#7, 2 blocos cifrados, decifragem e remoção do preenchimento) | ✅ |
 | Sensibilidade dos testes: PKCS#7 sem bloco extra, remoção sem conferir todos os bytes, uso dos 8 primeiros dígitos — todos detectados | ✅ |
 | Dados da dupla: chave, mensagem com PKCS#7 e texto cifrado iguais aos obtidos com OpenSSL (inclusive com o PKCS#7 automático do OpenSSL) | ✅ |
+| Análise: estados da rodada 1 conferidos pelo mesmo código com o apêndice B do FIPS-197; contagem e inversão de bits testadas | ✅ |
+| Avalanche: textos cifrados com chave e mensagem alteradas e contagens de bits conferidos com OpenSSL | ✅ |
+| Experimento ECB: 3 blocos iguais à tabela do enunciado | ✅ |
+| Relatório gerado na placa idêntico, byte a byte, ao gerado no computador (62 linhas) | ✅ |
 
 ### Desempenho no ESP32 (240 MHz, média de 1000 execuções)
 

@@ -1,10 +1,12 @@
 # Makefile — atalhos para testes no Mac e compilação dos firmwares.
 #
 #   make test          compila e executa os testes do núcleo no computador
+#   make analise       gera no computador o relatório de análise da dupla
 #   make firmware      compila transmissor e receptor para o ESP32 (arduino-cli)
 #   make upload-tx PORTA=/dev/cu.usbserial-XXX   grava o transmissor
 #   make upload-rx PORTA=/dev/cu.usbserial-XXX   grava o receptor
 #   make upload-fips PORTA=/dev/cu.usbserial-XXX grava a validação FIPS-197
+#   make upload-analise PORTA=/dev/cu.usbserial-XXX grava o relatório de análise
 #   make clean         remove artefatos de compilação
 
 LIB      := libraries/AES128Core
@@ -16,7 +18,7 @@ FQBN     := esp32:esp32:esp32:UploadSpeed=460800
 PORTA    ?= /dev/cu.usbserial-130
 ARDUINO  := arduino-cli
 
-.PHONY: test firmware upload-tx upload-rx upload-fips clean
+.PHONY: test analise firmware upload-tx upload-rx upload-fips upload-analise clean
 
 test: $(BUILD)/testes
 	./$(BUILD)/testes
@@ -24,6 +26,13 @@ test: $(BUILD)/testes
 $(BUILD)/testes: tests/host/test_main.c tests/host/teste.h $(SRC) $(wildcard $(LIB)/src/*.h)
 	@mkdir -p $(BUILD)
 	$(CC) $(CFLAGS) -o $@ tests/host/test_main.c $(SRC)
+
+analise: $(BUILD)/analise
+	./$(BUILD)/analise
+
+$(BUILD)/analise: tests/host/analise_host.c $(SRC) $(wildcard $(LIB)/src/*.h)
+	@mkdir -p $(BUILD)
+	$(CC) $(CFLAGS) -o $@ tests/host/analise_host.c $(SRC)
 
 firmware:
 	$(ARDUINO) compile --fqbn $(FQBN) --library $(LIB) --build-path $(BUILD)/transmissor firmware/transmissor
@@ -37,6 +46,9 @@ upload-rx:
 
 upload-fips:
 	$(ARDUINO) compile --fqbn $(FQBN) --library $(LIB) --build-path $(BUILD)/validacao_fips -u -p $(PORTA) firmware/validacao_fips
+
+upload-analise:
+	$(ARDUINO) compile --fqbn $(FQBN) --library $(LIB) --build-path $(BUILD)/analise_fw -u -p $(PORTA) firmware/analise
 
 clean:
 	rm -rf $(BUILD)

@@ -61,6 +61,16 @@ make upload-fips PORTA=/dev/cu.usbserial-XXX
 Feche o Monitor Serial antes de gravar: dois programas abertos na mesma porta disputam os bytes,
 o que causa falhas na gravação e texto embaralhado no monitor.
 
+### Relatório de análise
+
+```bash
+make analise                                   # no computador
+make upload-analise PORTA=/dev/cu.usbserial-XXX # na placa
+```
+
+Na placa, o relatório é impresso ao ligar e de novo a cada caractere enviado pelo Monitor Serial
+(basta pressionar Enter).
+
 ## 6. Arduino IDE
 
 Uma única vez, crie o link da biblioteca no sketchbook (na raiz do repositório):

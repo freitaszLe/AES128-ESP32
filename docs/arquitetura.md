@@ -22,11 +22,13 @@ libraries/AES128Core/
     ├── AES128Core.h       cabeçalho único incluído pelos sketches
     ├── aes128.h / .c      cifra de bloco AES-128 (FIPS-197) e modo ECB
     ├── pkcs7.h / .c       preenchimento PKCS#7
-    └── dupla.h / .c       chave e mensagem a partir das matrículas
+    ├── dupla.h / .c       chave e mensagem a partir das matrículas
+    └── analise.h / .c     estados da rodada 1, avalanche e relatório de análise
 firmware/
 ├── transmissor/transmissor.ino
 ├── receptor/receptor.ino
-└── validacao_fips/validacao_fips.ino   vetores do FIPS-197 executados na placa
+├── validacao_fips/validacao_fips.ino   vetores do FIPS-197 executados na placa
+└── analise/analise.ino                 relatório de análise na placa
 tests/host/
 ├── teste.h                mini-framework de testes
 └── test_main.c            testes do núcleo
@@ -172,6 +174,19 @@ matrícula A, matrícula B
 
 O bloco extra de `0x10` existe para que o último byte **sempre** indique o tamanho do
 preenchimento: sem ele, uma mensagem que terminasse em `0x01` seria confundida com preenchimento.
+
+## Módulo de análise
+
+| Função | Descrição |
+|---|---|
+| `analise_estados_rodada1` | Guarda o estado após AddRoundKey inicial, SubBytes, ShiftRows, MixColumns e AddRoundKey da rodada 1 |
+| `analise_bits_diferentes` | Conta os bits diferentes entre dois vetores (XOR + contagem de bits 1) |
+| `analise_inverter_bit` | Inverte um bit; bit 0 é o mais significativo do byte 0, como na leitura em hexadecimal |
+| `analise_relatorio` | Gera o relatório completo e o entrega, linha a linha, a uma função de saída |
+
+A função de saída é um parâmetro: o sketch `firmware/analise` passa uma função que escreve na
+`Serial`, e o programa `tests/host/analise_host.c` passa uma que escreve no terminal. Assim o
+relatório da placa e o do computador vêm do mesmo código e podem ser comparados diretamente.
 
 ## Protocolo do quadro UART
 

@@ -18,6 +18,7 @@ libraries/AES128Core/   núcleo AES-128 em C puro, compartilhado pelas duas plac
 firmware/transmissor/   placa A: monta a mensagem, cifra e envia o quadro pela UART2
 firmware/receptor/      placa B: recebe o quadro, decifra e exibe a mensagem
 firmware/validacao_fips/ executa no ESP32 os vetores de teste do FIPS-197
+firmware/analise/       imprime chaves de rodada, estados, avalanche e o experimento ECB
 tests/host/             testes do núcleo executados no computador
 tools/referencia.sh     conferência dos resultados com OpenSSL (não faz parte do firmware)
 docs/                   arquitetura, desenvolvimento e instruções de uso
@@ -27,10 +28,12 @@ docs/                   arquitetura, desenvolvimento e instruções de uso
 
 ```bash
 make test                                   # testes do núcleo no computador
+make analise                                # relatório de análise no computador
 make firmware                               # compila transmissor e receptor
 make upload-tx PORTA=/dev/cu.usbserial-XXX  # grava o transmissor
 make upload-rx PORTA=/dev/cu.usbserial-XXX  # grava o receptor
 make upload-fips PORTA=/dev/cu.usbserial-XXX # grava a validação FIPS-197
+make upload-analise PORTA=/dev/cu.usbserial-XXX # grava o relatório de análise
 ```
 
 Instalação das ferramentas, uso na Arduino IDE e montagem das placas: [docs/uso.md](docs/uso.md).
