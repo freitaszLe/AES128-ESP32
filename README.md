@@ -19,6 +19,7 @@ firmware/transmissor/   placa A: monta a mensagem, cifra e envia o quadro pela U
 firmware/receptor/      placa B: recebe o quadro, decifra e exibe a mensagem
 firmware/validacao_fips/ executa no ESP32 os vetores de teste do FIPS-197
 firmware/analise/       imprime chaves de rodada, estados, avalanche e o experimento ECB
+firmware/teste_uart/    teste da ligação UART2 entre as placas, sem criptografia
 tests/host/             testes do núcleo executados no computador
 tools/referencia.sh     conferência dos resultados com OpenSSL (não faz parte do firmware)
 docs/                   arquitetura, desenvolvimento e instruções de uso

@@ -149,7 +149,8 @@ textos cifrados iguais.
 | Núcleo ESP32 (Espressif) | `esp32:esp32@3.3.12` (ESP-IDF v5.5.5) |
 | Compilador para testes | Apple clang 21 |
 | Referência externa | OpenSSL 4.0.3 |
-| Placa | ESP32-D0WD-V3 (rev. 3.0), flash 4 MB, sem PSRAM (módulo WROOM-32), USB-serial CH340 |
+| Placa A | ESP32-D0WD-V3 (rev. 3.1), placa "ESP-32" de 30 pinos, USB-serial CP2102 |
+| Placa B | ESP32-D0WD-V3 (rev. 3.0), HW-394 (ESP-WROOM-32D), flash 4 MB, sem PSRAM, USB-serial CH340 |
 
 ## Registro de resultados
 
@@ -179,6 +180,8 @@ textos cifrados iguais.
 | Avalanche: textos cifrados com chave e mensagem alteradas e contagens de bits conferidos com OpenSSL | ✅ |
 | Experimento ECB: 3 blocos iguais à tabela do enunciado | ✅ |
 | Relatório gerado na placa idêntico, byte a byte, ao gerado no computador (62 linhas) | ✅ |
+| UART2 entre as placas (115200 8N1, sem criptografia): mais de 45 000 bytes em cada sentido, com todos os valores de 0x00 a 0xFF, sem erros | ✅ |
+| UART2: com uma placa em reset a outra deixa de receber, confirmando que cada placa recebe os bytes da outra (e não um eco) | ✅ |
 
 ### Desempenho no ESP32 (240 MHz, média de 1000 execuções)
 

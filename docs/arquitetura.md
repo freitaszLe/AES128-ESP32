@@ -28,7 +28,8 @@ firmware/
 ├── transmissor/transmissor.ino
 ├── receptor/receptor.ino
 ├── validacao_fips/validacao_fips.ino   vetores do FIPS-197 executados na placa
-└── analise/analise.ino                 relatório de análise na placa
+├── analise/analise.ino                 relatório de análise na placa
+└── teste_uart/teste_uart.ino           teste da UART2 sem criptografia
 tests/host/
 ├── teste.h                mini-framework de testes
 └── test_main.c            testes do núcleo

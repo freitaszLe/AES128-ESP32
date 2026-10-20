@@ -7,6 +7,7 @@
 #   make upload-rx PORTA=/dev/cu.usbserial-XXX   grava o receptor
 #   make upload-fips PORTA=/dev/cu.usbserial-XXX grava a validação FIPS-197
 #   make upload-analise PORTA=/dev/cu.usbserial-XXX grava o relatório de análise
+#   make upload-teste-uart PORTA=/dev/cu.usbserial-XXX grava o teste da UART2
 #   make clean         remove artefatos de compilação
 
 LIB      := libraries/AES128Core
@@ -18,7 +19,7 @@ FQBN     := esp32:esp32:esp32:UploadSpeed=460800
 PORTA    ?= /dev/cu.usbserial-130
 ARDUINO  := arduino-cli
 
-.PHONY: test analise firmware upload-tx upload-rx upload-fips upload-analise clean
+.PHONY: test analise firmware upload-tx upload-rx upload-fips upload-analise upload-teste-uart clean
 
 test: $(BUILD)/testes
 	./$(BUILD)/testes
@@ -49,6 +50,9 @@ upload-fips:
 
 upload-analise:
 	$(ARDUINO) compile --fqbn $(FQBN) --library $(LIB) --build-path $(BUILD)/analise_fw -u -p $(PORTA) firmware/analise
+
+upload-teste-uart:
+	$(ARDUINO) compile --fqbn $(FQBN) --build-path $(BUILD)/teste_uart -u -p $(PORTA) firmware/teste_uart
 
 clean:
 	rm -rf $(BUILD)

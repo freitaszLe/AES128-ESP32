@@ -32,13 +32,53 @@ arduino-cli board list
 No macOS, use a porta **`/dev/cu.usbserial-*`** (não a `/dev/tty.*`). Placas com conversor CH340
 usam o driver nativo do macOS.
 
-## 3. Testes no computador
+## 3. Montagem das placas
+
+Cada placa é alimentada pelo **próprio cabo USB**. Entre as placas ligam-se apenas três fios:
+
+| Fio | Placa A (transmissor) | Placa B (receptor) |
+|---|---|---|
+| 1 | TX2 (GPIO17) | RX2 (GPIO16) |
+| 2 | RX2 (GPIO16) | TX2 (GPIO17) |
+| 3 | GND | GND |
+
+```
+   Placa A                    Placa B
+  GPIO17 (TX2) ───────────────► GPIO16 (RX2)
+  GPIO16 (RX2) ◄─────────────── GPIO17 (TX2)
+  GND ───────────────────────── GND
+```
+
+- TX e RX são cruzados: o pino que transmite em uma placa vai no pino que recebe na outra.
+- O GND comum dá às duas placas a mesma referência de 0 V; sem ele os níveis lógicos não são
+  interpretados corretamente.
+- **Não** ligar 5V, VIN ou 3V3 entre as placas.
+- Algumas placas identificam esses pinos como `TX2`/`RX2`, outras como `D17`/`D16`.
+- Fazer as ligações com os cabos USB desconectados.
+
+### Teste da ligação (sem criptografia)
+
+```bash
+make upload-teste-uart PORTA=/dev/cu.usbserial-XXX   # gravar nas duas placas
+```
+
+Cada placa envia continuamente os bytes `0x00…0xFF` pela UART2 e confere a sequência recebida.
+No Monitor Serial (115200 baud) aparece, a cada 2 s:
+
+```
+TX 22336 bytes | RX 22272 bytes, 0 erro(s) | ultimo 0xff | OK
+```
+
+Enviar `z` pelo Monitor Serial zera os contadores. "RX: nada recebido" indica fio solto, TX/RX
+não cruzados ou outra placa desligada.
+
+## 4. Testes no computador
 
 ```bash
 make test
 ```
 
-## 4. Compilar e gravar pelo terminal
+## 5. Compilar e gravar pelo terminal
 
 ```bash
 make firmware                                # compila os dois sketches
@@ -49,7 +89,7 @@ make upload-rx PORTA=/dev/cu.usbserial-XXX   # grava o receptor
 A gravação usa 460800 baud. Na velocidade padrão (921600), conversores CH340 ligados por hub USB
 podem falhar com *"Unable to verify flash chip connection"*.
 
-## 5. Validação na placa
+## 6. Validação na placa
 
 Grava um sketch que executa os vetores do FIPS-197 (apêndices B e C.1) na placa e mede o tempo
 de cifragem. O resultado é repetido a cada 10 segundos no Monitor Serial (115200 baud):
@@ -71,7 +111,7 @@ make upload-analise PORTA=/dev/cu.usbserial-XXX # na placa
 Na placa, o relatório é impresso ao ligar e de novo a cada caractere enviado pelo Monitor Serial
 (basta pressionar Enter).
 
-## 6. Arduino IDE
+## 7. Arduino IDE
 
 Uma única vez, crie o link da biblioteca no sketchbook (na raiz do repositório):
 
@@ -92,7 +132,7 @@ Depois:
 > A velocidade de gravação (460800) não tem relação com a do Monitor Serial nem com a da UART2
 > (ambas 115200).
 
-## 7. Conferência com OpenSSL
+## 8. Conferência com OpenSSL
 
 ```bash
 tools/referencia.sh cifrar   <chave_hex> <blocos_hex>
