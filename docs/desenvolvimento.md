@@ -96,3 +96,8 @@
 | Cinco estados da rodada 1 a partir do texto claro (apêndice B) | ✅ |
 | Cifragem: apêndices B e C.1 | ✅ |
 | Sensibilidade dos testes: defeitos introduzidos de propósito (byte da S-box, sentido do ShiftRows, Rcon) foram todos detectados | ✅ |
+| S-box inversa: `InvSbox(Sbox(b)) = b` para os 256 bytes | ✅ |
+| InvSubBytes, InvShiftRows e InvMixColumns desfazem as diretas; conferem com o apêndice C.1 (rodada 1 inversa) | ✅ |
+| Decifragem: apêndices B e C.1 recuperam o texto claro | ✅ |
+| Ida e volta: `Decifrar(Cifrar(x)) = x` em 1000 chaves e blocos pseudoaleatórios | ✅ |
+| Sensibilidade dos testes da decifragem: coeficiente do InvMixColumns, sentido do InvShiftRows e ordem das chaves, todos detectados | ✅ |

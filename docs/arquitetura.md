@@ -87,6 +87,24 @@ rodada 10:      SubBytes → ShiftRows →              AddRoundKey(chave 10)
 
 A última rodada não tem MixColumns, conforme o FIPS-197.
 
+### Sequência da decifragem
+
+A decifragem percorre as rodadas de trás para frente, com as transformações inversas e as **mesmas
+chaves de rodada em ordem decrescente**:
+
+```
+AddRoundKey(chave 10)
+rodadas 9 a 1:  InvShiftRows → InvSubBytes → AddRoundKey(chave r) → InvMixColumns
+final:          InvShiftRows → InvSubBytes → AddRoundKey(chave 0)
+```
+
+| Inversa | Como desfaz a transformação |
+|---|---|
+| InvSubBytes | Aplica a S-box inversa (`InvSbox(Sbox(b)) = b`) |
+| InvShiftRows | Desloca a linha `r` em `r` posições para a **direita** |
+| InvMixColumns | Multiplica cada coluna pela matriz inversa `{0e, 0b, 0d, 09}` em GF(2⁸) |
+| AddRoundKey | É sua própria inversa: `(x ⊕ k) ⊕ k = x` |
+
 ### Aritmética em GF(2⁸)
 
 Cada byte é um polinômio de grau < 8 com coeficientes em {0, 1}. A soma é XOR e a multiplicação
@@ -119,10 +137,12 @@ Gera 44 palavras de 4 bytes (`w[0..43]`), ou seja, 11 chaves de rodada de 16 byt
 | Função | Descrição |
 |---|---|
 | `aes128_xtime`, `aes128_gf_mult` | Aritmética em GF(2⁸) |
-| `aes128_sbox` | Valor da S-box |
+| `aes128_sbox`, `aes128_inv_sbox` | Valor da S-box e da S-box inversa |
 | `aes128_sub_bytes`, `aes128_shift_rows`, `aes128_mix_columns`, `aes128_add_round_key` | Transformações, aplicadas no próprio estado |
 | `aes128_expandir_chave` | Chave de 16 bytes → 176 bytes de chaves de rodada |
+| `aes128_inv_sub_bytes`, `aes128_inv_shift_rows`, `aes128_inv_mix_columns` | Transformações inversas |
 | `aes128_cifrar_bloco` | Cifra um bloco de 16 bytes |
+| `aes128_decifrar_bloco` | Decifra um bloco de 16 bytes |
 
 As transformações são públicas para permitir testá-las isoladamente e registrar os estados
 intermediários de cada rodada.

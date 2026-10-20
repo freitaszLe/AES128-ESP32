@@ -6,7 +6,8 @@
  *  - figura 7: S-box (recalculada a partir da definição matemática);
  *  - apêndice A.1: expansão da chave 2b7e1516...;
  *  - apêndice B: estados da rodada 1 e resultado da cifragem;
- *  - apêndice C.1: cifragem com a chave 000102...0f.
+ *  - apêndice C.1: cifragem e decifragem ("INVERSE CIPHER") com a chave 000102...0f;
+ *  - figura 14: S-box inversa.
  */
 #include "teste.h"
 #include "aes128.h"
@@ -225,6 +226,135 @@ static void teste_cifragem_fips(void)
 
 /* ---------------------------------------------------------------------- */
 
+static void teste_inv_sbox(void)
+{
+    unsigned int b;
+    int divergencias = 0;
+
+    printf("[S-box inversa] InvSbox(Sbox(b)) == b para os 256 bytes\n");
+
+    for (b = 0; b < 256; b++)
+        if (aes128_inv_sbox(aes128_sbox((uint8_t)b)) != b ||
+            aes128_sbox(aes128_inv_sbox((uint8_t)b)) != b)
+            divergencias++;
+    CHECAR(divergencias == 0);
+
+    /* FIPS-197 figura 14: InvSbox({00}) = {52}, InvSbox({63}) = {00} */
+    CHECAR(aes128_inv_sbox(0x00) == 0x52);
+    CHECAR(aes128_inv_sbox(0x63) == 0x00);
+}
+
+/* ---------------------------------------------------------------------- */
+
+static void teste_transformacoes_inversas(void)
+{
+    printf("[transformações inversas] desfazem as diretas e conferem com o apêndice C.1\n");
+
+    /* Cada inversa desfaz a transformação direta da rodada 1 do apêndice B */
+    checar_transformacao(aes128_inv_sub_bytes,
+                         "d42711aee0bf98f1b8b45de51e415230",
+                         "193de3bea0f4e22b9ac68d2ae9f84808", "InvSubBytes");
+    checar_transformacao(aes128_inv_shift_rows,
+                         "d4bf5d30e0b452aeb84111f11e2798e5",
+                         "d42711aee0bf98f1b8b45de51e415230", "InvShiftRows");
+    checar_transformacao(aes128_inv_mix_columns,
+                         "046681e5e0cb199a48f8d37a2806264c",
+                         "d4bf5d30e0b452aeb84111f11e2798e5", "InvMixColumns");
+
+    /* Apêndice C.1, INVERSE CIPHER, rodada 1: istart -> is_row -> is_box */
+    checar_transformacao(aes128_inv_shift_rows,
+                         "7ad5fda789ef4e272bca100b3d9ff59f",
+                         "7a9f102789d5f50b2beffd9f3dca4ea7", "C.1 InvShiftRows");
+    checar_transformacao(aes128_inv_sub_bytes,
+                         "7a9f102789d5f50b2beffd9f3dca4ea7",
+                         "bd6e7c3df2b5779e0b61216e8b10b689", "C.1 InvSubBytes");
+}
+
+/* ---------------------------------------------------------------------- */
+
+static void checar_decifragem(const char *chave_hex, const char *cifrado_hex,
+                              const char *claro_hex, const char *nome)
+{
+    uint8_t chave[AES128_CHAVE], rk[AES128_CHAVES_RODADA_BYTES];
+    uint8_t cifrado[AES128_BLOCO], esp[AES128_BLOCO], saida[AES128_BLOCO];
+
+    hex_para_bytes(chave_hex, chave);
+    hex_para_bytes(cifrado_hex, cifrado);
+    hex_para_bytes(claro_hex, esp);
+
+    aes128_expandir_chave(chave, rk);
+    aes128_decifrar_bloco(rk, cifrado, saida);
+    CHECAR_BYTES(saida, esp, AES128_BLOCO, nome);
+
+    /* Decifragem no lugar (entrada == saída) deve dar o mesmo resultado */
+    aes128_decifrar_bloco(rk, cifrado, cifrado);
+    CHECAR_BYTES(cifrado, esp, AES128_BLOCO, "decifragem no lugar");
+}
+
+static void teste_decifragem_fips(void)
+{
+    printf("[decifragem] FIPS-197 apêndices B e C.1\n");
+    checar_decifragem("2b7e151628aed2a6abf7158809cf4f3c",
+                      "3925841d02dc09fbdc118597196a0b32",
+                      "3243f6a8885a308d313198a2e0370734", "apêndice B (inverso)");
+    checar_decifragem("000102030405060708090a0b0c0d0e0f",
+                      "69c4e0d86a7b0430d8cdb78070b4c55a",
+                      "00112233445566778899aabbccddeeff", "apêndice C.1 (inverso)");
+}
+
+/* ---------------------------------------------------------------------- */
+
+/* Gerador pseudoaleatório simples (xorshift32), apenas para gerar dados de
+ * teste reprodutíveis. Não tem uso criptográfico. */
+static uint32_t semente = 0x2545F491u;
+
+static uint8_t byte_teste(void)
+{
+    semente ^= semente << 13;
+    semente ^= semente >> 17;
+    semente ^= semente << 5;
+    return (uint8_t)semente;
+}
+
+static void teste_ida_e_volta(void)
+{
+    enum { CASOS = 1000 };
+    uint8_t chave[AES128_CHAVE], rk[AES128_CHAVES_RODADA_BYTES];
+    uint8_t claro[AES128_BLOCO], cifrado[AES128_BLOCO], volta[AES128_BLOCO];
+    uint8_t s[AES128_BLOCO], orig[AES128_BLOCO];
+    int caso, i, erros = 0, inversas_erradas = 0, iguais = 0;
+
+    printf("[ida e volta] Decifrar(Cifrar(x)) == x em %d chaves/blocos pseudoaleatórios\n", CASOS);
+
+    for (caso = 0; caso < CASOS; caso++) {
+        for (i = 0; i < AES128_BLOCO; i++) {
+            chave[i] = byte_teste();
+            claro[i] = byte_teste();
+        }
+        aes128_expandir_chave(chave, rk);
+        aes128_cifrar_bloco(rk, claro, cifrado);
+        aes128_decifrar_bloco(rk, cifrado, volta);
+        if (memcmp(volta, claro, AES128_BLOCO) != 0)
+            erros++;
+        if (memcmp(cifrado, claro, AES128_BLOCO) == 0)
+            iguais++;
+
+        /* Cada inversa desfaz sua transformação para um estado qualquer */
+        memcpy(orig, claro, AES128_BLOCO);
+        memcpy(s, claro, AES128_BLOCO);
+        aes128_sub_bytes(s);    aes128_inv_sub_bytes(s);
+        aes128_shift_rows(s);   aes128_inv_shift_rows(s);
+        aes128_mix_columns(s);  aes128_inv_mix_columns(s);
+        if (memcmp(s, orig, AES128_BLOCO) != 0)
+            inversas_erradas++;
+    }
+    CHECAR(erros == 0);
+    CHECAR(inversas_erradas == 0);
+    CHECAR(iguais == 0);  /* o texto cifrado nunca deve sair igual ao claro */
+}
+
+/* ---------------------------------------------------------------------- */
+
 int main(void)
 {
     teste_biblioteca_ligada();
@@ -234,5 +364,9 @@ int main(void)
     teste_transformacoes();
     teste_rodada1_apendice_b();
     teste_cifragem_fips();
+    teste_inv_sbox();
+    teste_transformacoes_inversas();
+    teste_decifragem_fips();
+    teste_ida_e_volta();
     return teste_resumo();
 }

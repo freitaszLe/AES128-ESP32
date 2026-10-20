@@ -37,8 +37,9 @@ uint8_t aes128_xtime(uint8_t a);
 /* Multiplicação genérica a * b em GF(2^8), construída com xtime. */
 uint8_t aes128_gf_mult(uint8_t a, uint8_t b);
 
-/* Valor da S-box para o byte b. */
+/* Valor da S-box e da S-box inversa para o byte b. */
 uint8_t aes128_sbox(uint8_t b);
+uint8_t aes128_inv_sbox(uint8_t b);
 
 /* ---- Transformações da cifragem (alteram o estado no lugar) -------------- */
 
@@ -48,7 +49,13 @@ void aes128_mix_columns(uint8_t estado[AES128_BLOCO]);
 void aes128_add_round_key(uint8_t estado[AES128_BLOCO],
                           const uint8_t chave_rodada[AES128_BLOCO]);
 
-/* ---- Expansão de chave e cifragem de um bloco ---------------------------- */
+/* ---- Transformações inversas, usadas na decifragem ----------------------- */
+
+void aes128_inv_sub_bytes(uint8_t estado[AES128_BLOCO]);
+void aes128_inv_shift_rows(uint8_t estado[AES128_BLOCO]);
+void aes128_inv_mix_columns(uint8_t estado[AES128_BLOCO]);
+
+/* ---- Expansão de chave, cifragem e decifragem de um bloco ----------------- */
 
 /* Gera as 11 chaves de rodada (44 palavras de 32 bits) a partir da chave. */
 void aes128_expandir_chave(const uint8_t chave[AES128_CHAVE],
@@ -58,6 +65,12 @@ void aes128_expandir_chave(const uint8_t chave[AES128_CHAVE],
 void aes128_cifrar_bloco(const uint8_t chaves_rodada[AES128_CHAVES_RODADA_BYTES],
                          const uint8_t entrada[AES128_BLOCO],
                          uint8_t saida[AES128_BLOCO]);
+
+/* Decifra um bloco de 16 bytes, usando as mesmas chaves de rodada da cifragem
+ * em ordem inversa. entrada e saida podem ser o mesmo vetor. */
+void aes128_decifrar_bloco(const uint8_t chaves_rodada[AES128_CHAVES_RODADA_BYTES],
+                           const uint8_t entrada[AES128_BLOCO],
+                           uint8_t saida[AES128_BLOCO]);
 
 #ifdef __cplusplus
 }
