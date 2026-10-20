@@ -187,6 +187,23 @@ textos cifrados iguais.
 | Placas: mensagem nova pelo comando `m` (1 e 2 blocos) | ✅ |
 | Placas: 1 bit da chave alterado no transmissor ou no receptor → PKCS#7 inválido, quadro rejeitado | ✅ |
 | Placas: quadro truncado descartado após 500 ms (15 de 32 bytes) e quadro seguinte recebido normalmente | ✅ |
+| Roteiro de demonstração executado de ponta a ponta nas placas | ✅ |
+| Mensagem nova `"Ola professor"`: cifrado do transmissor (`d15939d647bc1cea9cd566d92ffd8339`) igual ao do OpenSSL | ✅ |
+| `"LIGAR LED VERDE."` enviado 3 vezes: mesmo texto cifrado nas 3 (ECB é determinístico) | ✅ |
+| Roteiro executado manualmente pela Arduino IDE (dois Monitores Seriais): mensagem da dupla, `m Ola professor`, `b 127` (rejeitado), `k` e `t` (descartado com 7 de 16 bytes) | ✅ |
+
+### Cenários de falha física
+
+| Cenário | Resultado observado | Explicação |
+|---|---|---|
+| Fio TX2(A) → RX2(B) desconectado | 3 quadros enviados, nenhum recebido; receptor continua aguardando sem travar | Sem o fio não há sinal no RX2 |
+| Fio GND–GND desconectado | Os 3 quadros recebidos e decifrados normalmente | As duas placas estão ligadas por USB ao mesmo computador, cujos cabos já interligam os GNDs; com fontes independentes o fio de GND seria indispensável |
+| Os dois USBs desconectados e reconectados | O quadro enviado pelo transmissor ao ligar foi recebido (contador em 2 após o primeiro reenvio), e os seguintes também | O receptor reinicia na espera do `0xAA` e o transmissor envia ao ligar |
+
+Observação: no macOS, a primeira leitura da porta do conversor CP2102 logo após reiniciar a placa
+pode trazer dados repetidos ou ilegíveis (mais bytes do que a UART consegue enviar no período),
+um efeito do lado do computador; as leituras seguintes vêm normais e a comunicação entre as placas
+não é afetada.
 
 ### Desempenho no ESP32 (240 MHz, média de 1000 execuções)
 

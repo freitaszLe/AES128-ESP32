@@ -108,13 +108,46 @@ Comandos no Monitor Serial do **transmissor** (com "Nova linha" selecionado):
 Comandos no Monitor Serial do **receptor**: `b <n>` inverte um bit da chave do receptor e `k`
 restaura a original.
 
-## 4. Testes no computador
+## 4. Roteiro de demonstração
+
+### Preparação
+
+1. Transmissor gravado na placa A e receptor na placa B (`make upload-tx` / `make upload-rx`).
+2. Três fios ligados (TX2→RX2, RX2←TX2, GND) e os dois cabos USB conectados.
+3. Duas janelas da Arduino IDE, uma por porta, Monitor Serial em 115200 baud com "New Line".
+4. Um terminal aberto na raiz do repositório para a conferência com OpenSSL.
+
+### Sequência
+
+| # | Ação | Onde | Resultado esperado |
+|---|---|---|---|
+| 1 | Enter | transmissor | Receptor exibe `MENSAGEM: A:2022178440126;B:2022178440142` |
+| 2 | Comparar os blocos cifrados das duas telas | — | Iguais: `907e9c61…5ec0` / `39c740f2…076b` |
+| 3 | `m <texto>` | transmissor | Receptor exibe o texto novo |
+| 4 | Conferir o cifrado do passo 3 com OpenSSL (abaixo) | terminal | Igual ao exibido pelo transmissor |
+| 5 | `b 127` | transmissor | Chave termina em `…0143`; receptor rejeita (PKCS#7 inválido) |
+| 6 | `k` | transmissor | Receptor volta a decifrar |
+| 7 | `m LIGAR LED VERDE.` três vezes seguidas | transmissor | Cifrado sempre igual: ECB é determinístico |
+| 8 | `t` | transmissor | Receptor descarta o quadro após 500 ms; o seguinte chega normalmente |
+| 9 | `make analise` | terminal | Chaves de rodada, 5 estados, avalanche e experimento ECB |
+
+Conferência de uma mensagem nova com OpenSSL (a chave é a exibida pelo transmissor; o OpenSSL
+aplica o PKCS#7 automaticamente quando não se usa `-nopad`):
+
+```bash
+printf 'Ola professor' | openssl enc -aes-128-ecb -K 37383434303132363738343430313432 | xxd -p -c 16
+```
+
+Para uma chave com um bit invertido, use a "Chave (hex)" exibida pelo transmissor após o
+comando `b`.
+
+## 5. Testes no computador
 
 ```bash
 make test
 ```
 
-## 5. Compilar e gravar pelo terminal
+## 6. Compilar e gravar pelo terminal
 
 ```bash
 make firmware                                # compila os dois sketches
@@ -125,7 +158,7 @@ make upload-rx PORTA=/dev/cu.usbserial-XXX   # grava o receptor
 A gravação usa 460800 baud. Na velocidade padrão (921600), conversores CH340 ligados por hub USB
 podem falhar com *"Unable to verify flash chip connection"*.
 
-## 6. Validação na placa
+## 7. Validação na placa
 
 Grava um sketch que executa os vetores do FIPS-197 (apêndices B e C.1) na placa e mede o tempo
 de cifragem. O resultado é repetido a cada 10 segundos no Monitor Serial (115200 baud):
@@ -147,7 +180,7 @@ make upload-analise PORTA=/dev/cu.usbserial-XXX # na placa
 Na placa, o relatório é impresso ao ligar e de novo a cada caractere enviado pelo Monitor Serial
 (basta pressionar Enter).
 
-## 7. Arduino IDE
+## 8. Arduino IDE
 
 Uma única vez, crie o link da biblioteca no sketchbook (na raiz do repositório):
 
@@ -168,7 +201,7 @@ Depois:
 > A velocidade de gravação (460800) não tem relação com a do Monitor Serial nem com a da UART2
 > (ambas 115200).
 
-## 8. Conferência com OpenSSL
+## 9. Conferência com OpenSSL
 
 ```bash
 tools/referencia.sh cifrar   <chave_hex> <blocos_hex>
