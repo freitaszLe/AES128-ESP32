@@ -54,6 +54,22 @@
 | Cifrado, bloco 1 | `3a3784991ab0acaa88d5fd94cb7b74ad` |
 | Cifrado, bloco 2 | `cbea1d9e3e1f39da47111cf69064b166` |
 
+### Dados da dupla
+
+| Item | Valor |
+|---|---|
+| Matrículas | A = `2022178440126`, B = `2022178440142` |
+| 8 últimos dígitos | A = `78440126`, B = `78440142` |
+| Chave (ASCII) | `7844012678440142` |
+| Chave (hex) | `37383434303132363738343430313432` |
+| Mensagem (31 bytes) | `A:2022178440126;B:2022178440142` |
+| Bloco 1 com PKCS#7 | `413a323032323137383434303132363b` |
+| Bloco 2 com PKCS#7 | `423a3230323231373834343031343201` (1 byte de preenchimento `0x01`) |
+| Cifrado, bloco 1 | `907e9c613af4c51b5962ab262c545ec0` |
+| Cifrado, bloco 2 | `39c740f27e00a499c0e34ea9fd06076b` |
+
+Quadro UART correspondente (34 bytes): `AA 02 907e9c61…5ec0 39c740f2…076b`.
+
 ### Blocos repetidos em ECB (chave do exemplo)
 
 | Bloco | Texto claro (16 bytes) | Cifrado |
@@ -102,6 +118,11 @@
 | Ida e volta: `Decifrar(Cifrar(x)) = x` em 1000 chaves e blocos pseudoaleatórios | ✅ |
 | Sensibilidade dos testes da decifragem: coeficiente do InvMixColumns, sentido do InvShiftRows e ordem das chaves, todos detectados | ✅ |
 | ESP32: apêndices B e C.1 cifrados e decifrados corretamente na placa (`validacao_fips`) | ✅ |
+| Matrículas: chave e mensagem do exemplo do enunciado; matrículas com menos e mais de 8 dígitos e com caracteres não numéricos | ✅ |
+| PKCS#7: mensagens de 0, 15, 16, 17 e 21 bytes; rejeição de preenchimentos inválidos | ✅ |
+| ECB: exemplo do enunciado reproduzido byte a byte (mensagem com PKCS#7, 2 blocos cifrados, decifragem e remoção do preenchimento) | ✅ |
+| Sensibilidade dos testes: PKCS#7 sem bloco extra, remoção sem conferir todos os bytes, uso dos 8 primeiros dígitos — todos detectados | ✅ |
+| Dados da dupla: chave, mensagem com PKCS#7 e texto cifrado iguais aos obtidos com OpenSSL (inclusive com o PKCS#7 automático do OpenSSL) | ✅ |
 
 ### Desempenho no ESP32 (240 MHz, média de 1000 execuções)
 

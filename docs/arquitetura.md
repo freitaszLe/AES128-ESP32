@@ -20,7 +20,9 @@ libraries/AES128Core/
 ├── library.properties     metadados da biblioteca (Arduino IDE / arduino-cli)
 └── src/
     ├── AES128Core.h       cabeçalho único incluído pelos sketches
-    └── aes128.h / .c      cifra de bloco AES-128 (FIPS-197)
+    ├── aes128.h / .c      cifra de bloco AES-128 (FIPS-197) e modo ECB
+    ├── pkcs7.h / .c       preenchimento PKCS#7
+    └── dupla.h / .c       chave e mensagem a partir das matrículas
 firmware/
 ├── transmissor/transmissor.ino
 ├── receptor/receptor.ino
@@ -147,6 +149,29 @@ Gera 44 palavras de 4 bytes (`w[0..43]`), ou seja, 11 chaves de rodada de 16 byt
 
 As transformações são públicas para permitir testá-las isoladamente e registrar os estados
 intermediários de cada rodada.
+
+## Dados da dupla, PKCS#7 e ECB
+
+```
+matrícula A, matrícula B
+   │                     │
+   ├─ dupla_montar_chave ┤→ 8 últimos dígitos de A + 8 últimos de B, em ASCII → chave (16 bytes)
+   └ dupla_montar_mensagem → "A:<A>;B:<B>"
+                               │ pkcs7_aplicar  (+1 a 16 bytes de valor = quantidade)
+                               ▼
+                     n blocos de 16 bytes ── aes128_ecb_cifrar ──► texto cifrado
+```
+
+| Função | Descrição |
+|---|---|
+| `dupla_montar_chave` | Ignora caracteres que não são dígitos, usa os 8 últimos dígitos de cada matrícula (zeros à esquerda se faltarem) |
+| `dupla_montar_mensagem` | Monta `A:<matrícula A>;B:<matrícula B>` com as matrículas completas |
+| `pkcs7_aplicar` | Acrescenta de 1 a 16 bytes; se o tamanho já é múltiplo de 16, acrescenta um bloco inteiro de `0x10` |
+| `pkcs7_remover` | Valida (tamanho múltiplo de 16, último byte entre 1 e 16, todos os bytes de preenchimento iguais) e informa o tamanho original |
+| `aes128_ecb_cifrar` / `aes128_ecb_decifrar` | Aplicam a cifra a cada bloco de forma independente |
+
+O bloco extra de `0x10` existe para que o último byte **sempre** indique o tamanho do
+preenchimento: sem ele, uma mensagem que terminasse em `0x01` seria confundida com preenchimento.
 
 ## Protocolo do quadro UART
 

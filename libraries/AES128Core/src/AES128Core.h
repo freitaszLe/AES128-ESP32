@@ -9,5 +9,7 @@
 #define AES128CORE_H
 
 #include "aes128.h"
+#include "pkcs7.h"
+#include "dupla.h"
 
 #endif /* AES128CORE_H */

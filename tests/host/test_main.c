@@ -8,9 +8,14 @@
  *  - apêndice B: estados da rodada 1 e resultado da cifragem;
  *  - apêndice C.1: cifragem e decifragem ("INVERSE CIPHER") com a chave 000102...0f;
  *  - figura 14: S-box inversa.
+ * Os testes de matrículas, PKCS#7 e ECB usam o exemplo do enunciado do trabalho
+ * (matrículas fictícias 20231001 e 20231002) e os dados reais da dupla, cujos
+ * valores esperados foram obtidos de forma independente com OpenSSL.
  */
 #include "teste.h"
 #include "aes128.h"
+#include "dupla.h"
+#include "pkcs7.h"
 
 /* ---------------------------------------------------------------------- */
 
@@ -355,6 +360,168 @@ static void teste_ida_e_volta(void)
 
 /* ---------------------------------------------------------------------- */
 
+static void checar_chave(const char *a, const char *b, const char *esperada_ascii)
+{
+    uint8_t chave[AES128_CHAVE];
+    char nome[96];
+    dupla_montar_chave(a, b, chave);
+    snprintf(nome, sizeof nome, "chave de \"%s\" + \"%s\"", a, b);
+    CHECAR_BYTES(chave, esperada_ascii, AES128_CHAVE, nome);
+}
+
+static void teste_dupla(void)
+{
+    uint8_t chave[AES128_CHAVE], esp[AES128_CHAVE];
+    char msg[64];
+
+    printf("[matrículas] chave e mensagem\n");
+
+    /* Exemplo do enunciado */
+    dupla_montar_chave("20231001", "20231002", chave);
+    hex_para_bytes("32303233313030313230323331303032", esp);
+    CHECAR_BYTES(chave, esp, AES128_CHAVE, "chave do exemplo");
+
+    CHECAR(dupla_montar_mensagem("20231001", "20231002", msg, sizeof msg) == 21);
+    CHECAR(strcmp(msg, "A:20231001;B:20231002") == 0);
+
+    /* Menos de 8 dígitos: completa com zeros à esquerda */
+    checar_chave("12345", "1", "0001234500000001");
+    /* Mais de 8 dígitos: usa somente os 8 últimos */
+    checar_chave("202310010042", "9876543210", "1001004276543210");
+    /* Caracteres que não são dígitos são ignorados na chave */
+    checar_chave("2023.1001-X", "2023/1002", "2023100120231002");
+    /* Matrícula vazia vira "00000000" */
+    checar_chave("", "20231002", "0000000020231002");
+
+    /* Na mensagem, a matrícula aparece completa, como foi informada */
+    CHECAR(dupla_montar_mensagem("2023.1001-X", "9", msg, sizeof msg) == 17);
+    CHECAR(strcmp(msg, "A:2023.1001-X;B:9") == 0);
+
+    /* Mensagem que não cabe no buffer */
+    CHECAR(dupla_montar_mensagem("20231001", "20231002", msg, 21) == 0);
+}
+
+/* ---------------------------------------------------------------------- */
+
+static void checar_pkcs7(size_t n, size_t total_esperado)
+{
+    uint8_t buf[64];
+    size_t i, original = 999;
+    int ok = 1;
+    uint8_t valor = (uint8_t)(total_esperado - n);
+    char nome[64];
+
+    for (i = 0; i < n; i++) buf[i] = (uint8_t)('a' + i % 26);
+
+    snprintf(nome, sizeof nome, "PKCS#7 de %zu bytes", n);
+    CHECAR(pkcs7_aplicar(buf, n, buf, sizeof buf) == total_esperado);
+    for (i = n; i < total_esperado; i++)
+        if (buf[i] != valor) ok = 0;
+    if (!ok) printf("  FALHOU: bytes de preenchimento errados em %s\n", nome);
+    CHECAR(ok);
+    CHECAR(pkcs7_remover(buf, total_esperado, &original) == 0);
+    CHECAR(original == n);
+}
+
+static void teste_pkcs7(void)
+{
+    uint8_t buf[32];
+    size_t original;
+
+    printf("[PKCS#7] aplicação, remoção e casos-limite\n");
+
+    checar_pkcs7(0, 16);    /* mensagem vazia: bloco inteiro de 0x10        */
+    checar_pkcs7(15, 16);   /* falta 1 byte: um único 0x01                  */
+    checar_pkcs7(16, 32);   /* múltiplo de 16: bloco extra de 0x10          */
+    checar_pkcs7(17, 32);   /* 15 bytes de 0x0f                             */
+    checar_pkcs7(21, 32);   /* exemplo do enunciado: 11 bytes de 0x0b       */
+
+    /* Sem espaço suficiente */
+    CHECAR(pkcs7_aplicar(buf, 16, buf, 16) == 0);
+
+    /* Preenchimentos inválidos devem ser rejeitados */
+    memset(buf, 0x05, sizeof buf);
+    buf[15] = 0x00;
+    CHECAR(pkcs7_remover(buf, 16, &original) == -1);   /* último byte 0     */
+    buf[15] = 0x11;
+    CHECAR(pkcs7_remover(buf, 16, &original) == -1);   /* último byte > 16  */
+    buf[15] = 0x03; buf[14] = 0x03; buf[13] = 0x07;
+    CHECAR(pkcs7_remover(buf, 16, &original) == -1);   /* bytes diferentes  */
+    CHECAR(pkcs7_remover(buf, 15, &original) == -1);   /* não múltiplo de 16 */
+    CHECAR(pkcs7_remover(buf, 0, &original) == -1);    /* vazio             */
+}
+
+/* ---------------------------------------------------------------------- */
+
+static void teste_exemplo_enunciado_ecb(void)
+{
+    uint8_t chave[AES128_CHAVE], rk[AES128_CHAVES_RODADA_BYTES];
+    uint8_t dados[64], esp[32], volta[64];
+    char msg[64];
+    size_t n, total, original = 0;
+
+    printf("[ECB] exemplo completo do enunciado (2 blocos)\n");
+
+    dupla_montar_chave("20231001", "20231002", chave);
+    n = dupla_montar_mensagem("20231001", "20231002", msg, sizeof msg);
+    total = pkcs7_aplicar((const uint8_t *)msg, n, dados, sizeof dados);
+    CHECAR(total == 32);
+
+    hex_para_bytes("413a32303233313030313b423a323032"
+                   "33313030320b0b0b0b0b0b0b0b0b0b0b", esp);
+    CHECAR_BYTES(dados, esp, 32, "mensagem com PKCS#7");
+
+    aes128_expandir_chave(chave, rk);
+    aes128_ecb_cifrar(rk, dados, dados, total / AES128_BLOCO);
+    hex_para_bytes("3a3784991ab0acaa88d5fd94cb7b74ad"
+                   "cbea1d9e3e1f39da47111cf69064b166", esp);
+    CHECAR_BYTES(dados, esp, 32, "texto cifrado ECB");
+
+    aes128_ecb_decifrar(rk, dados, volta, total / AES128_BLOCO);
+    CHECAR(pkcs7_remover(volta, total, &original) == 0);
+    CHECAR(original == n);
+    CHECAR(memcmp(volta, msg, n) == 0);
+}
+
+/* ---------------------------------------------------------------------- */
+
+static void teste_dados_da_dupla(void)
+{
+    static const char *MATRICULA_A = "2022178440126";
+    static const char *MATRICULA_B = "2022178440142";
+    uint8_t chave[AES128_CHAVE], rk[AES128_CHAVES_RODADA_BYTES];
+    uint8_t dados[64], esp[32], volta[64];
+    char msg[64];
+    size_t n, total, original = 0;
+
+    printf("[dupla] %s e %s\n", MATRICULA_A, MATRICULA_B);
+
+    dupla_montar_chave(MATRICULA_A, MATRICULA_B, chave);
+    CHECAR_BYTES(chave, "7844012678440142", AES128_CHAVE, "chave da dupla (ASCII)");
+
+    n = dupla_montar_mensagem(MATRICULA_A, MATRICULA_B, msg, sizeof msg);
+    CHECAR(n == 31);
+    CHECAR(strcmp(msg, "A:2022178440126;B:2022178440142") == 0);
+
+    total = pkcs7_aplicar((const uint8_t *)msg, n, dados, sizeof dados);
+    CHECAR(total == 32);
+    hex_para_bytes("413a323032323137383434303132363b"
+                   "423a3230323231373834343031343201", esp);
+    CHECAR_BYTES(dados, esp, 32, "mensagem da dupla com PKCS#7");
+
+    aes128_expandir_chave(chave, rk);
+    aes128_ecb_cifrar(rk, dados, dados, total / AES128_BLOCO);
+    hex_para_bytes("907e9c613af4c51b5962ab262c545ec0"
+                   "39c740f27e00a499c0e34ea9fd06076b", esp);
+    CHECAR_BYTES(dados, esp, 32, "texto cifrado da dupla");
+
+    aes128_ecb_decifrar(rk, dados, volta, total / AES128_BLOCO);
+    CHECAR(pkcs7_remover(volta, total, &original) == 0);
+    CHECAR(original == n && memcmp(volta, msg, n) == 0);
+}
+
+/* ---------------------------------------------------------------------- */
+
 int main(void)
 {
     teste_biblioteca_ligada();
@@ -368,5 +535,9 @@ int main(void)
     teste_transformacoes_inversas();
     teste_decifragem_fips();
     teste_ida_e_volta();
+    teste_dupla();
+    teste_pkcs7();
+    teste_exemplo_enunciado_ecb();
+    teste_dados_da_dupla();
     return teste_resumo();
 }

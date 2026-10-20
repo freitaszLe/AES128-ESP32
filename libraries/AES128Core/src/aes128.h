@@ -13,6 +13,7 @@
 #ifndef AES128_H
 #define AES128_H
 
+#include <stddef.h>
 #include <stdint.h>
 
 /* Os sketches são compilados como C++; o núcleo, como C. O bloco extern "C"
@@ -71,6 +72,15 @@ void aes128_cifrar_bloco(const uint8_t chaves_rodada[AES128_CHAVES_RODADA_BYTES]
 void aes128_decifrar_bloco(const uint8_t chaves_rodada[AES128_CHAVES_RODADA_BYTES],
                            const uint8_t entrada[AES128_BLOCO],
                            uint8_t saida[AES128_BLOCO]);
+
+/* ---- Modo ECB ------------------------------------------------------------ */
+
+/* Cifra/decifra n_blocos blocos consecutivos, cada um de forma independente
+ * com a mesma chave (modo ECB). entrada e saida podem ser o mesmo vetor. */
+void aes128_ecb_cifrar(const uint8_t chaves_rodada[AES128_CHAVES_RODADA_BYTES],
+                       const uint8_t *entrada, uint8_t *saida, size_t n_blocos);
+void aes128_ecb_decifrar(const uint8_t chaves_rodada[AES128_CHAVES_RODADA_BYTES],
+                         const uint8_t *entrada, uint8_t *saida, size_t n_blocos);
 
 #ifdef __cplusplus
 }

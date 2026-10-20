@@ -11,7 +11,7 @@
 
 const char *aes128core_versao(void)
 {
-    return "0.3.0";
+    return "0.4.0";
 }
 
 /* ========================================================================
@@ -333,4 +333,29 @@ void aes128_decifrar_bloco(const uint8_t chaves_rodada[AES128_CHAVES_RODADA_BYTE
     aes128_add_round_key(estado, &chaves_rodada[0]);
 
     memcpy(saida, estado, AES128_BLOCO);
+}
+
+/* ========================================================================
+ * Modo ECB (Electronic Codebook)
+ *
+ * Cada bloco de 16 bytes é cifrado de forma independente, com a mesma chave.
+ * Consequência: blocos de texto claro iguais geram blocos cifrados iguais,
+ * o que revela padrões da mensagem e permite reordenar ou repetir blocos
+ * sem que o receptor perceba.
+ * ======================================================================== */
+
+void aes128_ecb_cifrar(const uint8_t chaves_rodada[AES128_CHAVES_RODADA_BYTES],
+                       const uint8_t *entrada, uint8_t *saida, size_t n_blocos)
+{
+    size_t i;
+    for (i = 0; i < n_blocos; i++)
+        aes128_cifrar_bloco(chaves_rodada, &entrada[AES128_BLOCO * i], &saida[AES128_BLOCO * i]);
+}
+
+void aes128_ecb_decifrar(const uint8_t chaves_rodada[AES128_CHAVES_RODADA_BYTES],
+                         const uint8_t *entrada, uint8_t *saida, size_t n_blocos)
+{
+    size_t i;
+    for (i = 0; i < n_blocos; i++)
+        aes128_decifrar_bloco(chaves_rodada, &entrada[AES128_BLOCO * i], &saida[AES128_BLOCO * i]);
 }
